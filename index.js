@@ -1,3 +1,4 @@
+import Cache from "./cache.js";
 import cachingProxy from "./proxy.js";
 
 export function cacheProxy() {

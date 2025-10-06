@@ -1,42 +1,13 @@
-class Cache {
-  constructor(ttl = 60000) {
-    // Default TTL: 60 seconds
-    this.store = new Map();
-    this.ttl = ttl;
-  }
+import { createClient } from "redis";
 
-  set(key, value) {
-    const expires = Date.now() + this.ttl;
-    this.store.set(key, { value, expires });
-  }
+const cache = async () => {
+  const client = await createClient()
+    .on("error", (err) => {
+      console.log(`error connecting to redis: ${error}`);
+      process.exit(1);
+    })
+    .connect();
+  return client;
+};
 
-  get(key) {
-    const entry = this.store.get(key);
-    if (!entry) return undefined;
-    if (Date.now() > entry.expires) {
-      this.store.delete(key);
-      return undefined;
-    }
-    return entry.value;
-  }
-
-  has(key) {
-    const entry = this.store.get(key);
-    if (!entry) return false;
-    if (Date.now() > entry.expires) {
-      this.store.delete(key);
-      return false;
-    }
-    return true;
-  }
-
-  delete(key) {
-    this.store.delete(key);
-  }
-
-  clear() {
-    this.store.clear();
-  }
-}
-
-module.exports = Cache;
+export default cache;
