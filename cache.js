@@ -1,6 +1,6 @@
 import { createClient } from "redis";
 
-const cache = async () => {
+const redisClient = async () => {
   const client = await createClient()
     .on("error", (err) => {
       console.log(`error connecting to redis: ${error}`);
@@ -10,4 +10,4 @@ const cache = async () => {
   return client;
 };
 
-export default cache;
+export default redisClient;
