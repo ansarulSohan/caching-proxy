@@ -1,6 +1,6 @@
 import axios from "axios";
 import express from "express";
-import redisClient from "./cache.js";
+import { redisClient } from "./cache.js";
 
 const cachingProxy = (port, origin) => {
   const app = express();

@@ -10,4 +10,11 @@ const redisClient = async () => {
   return client;
 };
 
-export default redisClient;
+const clearCache = async (cache) => {
+  console.log("Clearing Cache...");
+  await cache.flushDb();
+  console.log("Cache Cleared");
+  process.exit(0);
+};
+
+export { clearCache, redisClient };
