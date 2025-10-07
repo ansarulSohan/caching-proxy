@@ -1,15 +1,17 @@
-# caching-proxy
+# Caching Server
 
-A high-performance HTTP caching proxy server built with Node.js, Express, and Redis. This tool acts as a reverse proxy that caches responses from target APIs to reduce load and improve response times.
+A CLI tool that starts a caching proxy server, forwarding requests to the actual server and caching the responses. If the same request is made again, it returns the cached response instead of forwarding the request to the server.
+
+This project is based on the [Caching Server](https://roadmap.sh/projects/caching-server) challenge from roadmap.sh.
 
 ## Features
 
-- 🚀 **HTTP Proxy Server**: Forward requests to any target origin
-- 💾 **Redis Caching**: Cache responses with configurable TTL
-- 🔍 **Cache Headers**: Automatic `X-cache: HIT/MISS` headers
+- 🚀 **HTTP Proxy Server**: Forward requests to any origin server
+- 💾 **Response Caching**: Cache responses to improve performance and reduce server load
+- 🔍 **Cache Headers**: Automatic `X-Cache: HIT/MISS` headers to indicate cache status
+- 🧹 **Cache Management**: Clear cache functionality
 - 📊 **Request Logging**: Detailed logging of all proxied requests
-- 🛠️ **CLI Interface**: Easy-to-use command-line interface
-- ⚡ **High Performance**: Built with Express.js and Redis for speed
+- ⚡ **High Performance**: Built with Node.js, Express, and Redis
 
 ## Prerequisites
 
@@ -19,9 +21,7 @@ A high-performance HTTP caching proxy server built with Node.js, Express, and Re
 
 ## Installation
 
-### Local Development
-
-Clone the repository and install dependencies:
+### Clone and Install
 
 ```bash
 git clone https://github.com/ansarulSohan/caching-proxy.git
@@ -39,54 +39,93 @@ npm install -g .
 
 ## Usage
 
-### Basic Usage
+### Start Caching Proxy Server
 
-Start the caching proxy server:
+Start the caching proxy server with the following command:
 
 ```bash
-caching-proxy --port 3000 --origin api.restful-api.dev
+caching-proxy --port <number> --origin <url>
 ```
 
-### CLI Options
+**Parameters:**
 
-- `--port <number>`: Port to run the proxy server (default: 3000)
-- `--origin <string>`: Target origin server to proxy requests to
+- `--port <number>`: Port on which the caching proxy server will run
+- `--origin <url>`: URL of the server to which requests will be forwarded
 
-### Examples
+### Clear Cache
+
+Clear all cached responses:
 
 ```bash
-# Proxy requests to JSONPlaceholder API
-caching-proxy --port 3000 --origin jsonplaceholder.typicode.com
-
-# Proxy to a custom API server
-caching-proxy --port 8080 --origin api.example.com
-
-# Local development
-node bin/bin.js --port 3000 --origin httpbin.org
+caching-proxy --clear-cache
 ```
 
-### Testing the Proxy
+### Example 1: DummyJSON API
 
-Once running, test with curl or any HTTP client:
+Start the caching proxy server to forward requests to DummyJSON:
 
 ```bash
-# First request (cache miss)
-curl http://localhost:3000/posts/1
-# Response includes: X-cache: MISS
+caching-proxy --port 3000 --origin http://dummyjson.com
+```
 
-# Second request (cache hit)
-curl http://localhost:3000/posts/1
-# Response includes: X-cache: HIT
+Now you can make requests to your proxy server:
+
+```bash
+# First request (cache miss) - forwarded to http://dummyjson.com/products
+curl http://localhost:3000/products
+# Response includes: X-Cache: MISS
+
+# Second request (cache hit) - served from cache
+curl http://localhost:3000/products
+# Response includes: X-Cache: HIT
+```
+
+### Example 2: JSONPlaceholder API
+
+```bash
+caching-proxy --port 8080 --origin https://jsonplaceholder.typicode.com
+```
+
+Test with:
+
+```bash
+# Request to http://localhost:8080/posts/1 forwards to https://jsonplaceholder.typicode.com/posts/1
+curl http://localhost:8080/posts/1
+```
+
+### Example 3: Clear Cache
+
+```bash
+# Clear all cached responses
+caching-proxy --clear-cache
 ```
 
 ## How It Works
 
+The caching proxy server works as follows:
+
 1. **Request Reception**: The proxy receives HTTP requests on the specified port
-2. **Cache Check**: Checks Redis for a cached response using `METHOD:URL` as the key
-3. **Cache Hit**: If found, returns cached response with `X-cache: HIT` header
-4. **Cache Miss**: If not found, forwards request to origin server
-5. **Response Caching**: Stores the origin response in Redis with `X-cache: MISS` header
-6. **Response Delivery**: Returns the response to the client
+2. **Cache Lookup**: Checks Redis cache for a previously stored response using the request method and URL as the key
+3. **Cache Hit**: If a cached response exists, returns it immediately with `X-Cache: HIT` header
+4. **Cache Miss**: If no cached response exists:
+   - Forwards the request to the origin server
+   - Receives the response from the origin server
+   - Stores the response in the cache for future requests
+   - Returns the response to the client with `X-Cache: MISS` header
+
+## Cache Headers
+
+The server adds cache status headers to all responses:
+
+```
+# If the response is from the cache
+X-Cache: HIT
+
+# If the response is from the origin server
+X-Cache: MISS
+```
+
+These headers help you understand whether the response came from the cache or was fetched fresh from the origin server.
 
 ## Architecture
 
@@ -127,16 +166,26 @@ npm install
 # Start Redis (if using Docker)
 docker run -d -p 6379:6379 redis:alpine
 
-# Run locally
-node bin/bin.js --port 3000 --origin httpbin.org
+# Run locally with DummyJSON example
+node bin/bin.js --port 3000 --origin http://dummyjson.com
 ```
+
+### Implementation Details
+
+This caching server demonstrates several key concepts:
+
+- **HTTP Proxying**: Forwarding client requests to upstream servers
+- **Response Caching**: Storing server responses to reduce load and improve performance
+- **Cache Management**: Providing mechanisms to clear cached data
+- **Header Manipulation**: Adding custom headers to indicate cache status
+- **CLI Design**: Building command-line tools with argument parsing
 
 ### Technical Notes
 
-- **Shebang**: The CLI file includes `#!/usr/bin/env node` to ensure proper execution
+- **Shebang**: The CLI file includes `#!/usr/bin/env node` to ensure proper execution across platforms
 - **ESM Modules**: Uses ES6 import/export syntax (`"type": "module"` in package.json)
 - **Error Handling**: Graceful error handling with appropriate HTTP status codes
-- **JSON Serialization**: Safe Redis storage using JSON.stringify/parse
+- **Serialization**: Safe Redis storage using JSON.stringify/parse for complex data structures
 
 ## Configuration
 
@@ -160,6 +209,21 @@ Currently, cached responses don't expire. Add TTL in `proxy.js`:
 ```javascript
 await cache.setEx(key, 3600, JSON.stringify(response)); // 1 hour TTL
 ```
+
+## Learning Outcomes
+
+After building this caching proxy server, you will have gained understanding of:
+
+- **Caching Strategies**: How caching works and its impact on performance
+- **HTTP Proxying**: Techniques for forwarding requests and responses
+- **Cache Management**: When and how to invalidate cached data
+- **CLI Development**: Building command-line tools with Node.js
+- **Redis Integration**: Using Redis as a caching layer
+- **Network Programming**: Understanding of HTTP headers and status codes
+
+## Project Reference
+
+This project is based on the [Caching Server](https://roadmap.sh/projects/caching-server) challenge from [roadmap.sh](https://roadmap.sh) - a community-driven platform for learning paths in software development.
 
 ## Contributing
 
